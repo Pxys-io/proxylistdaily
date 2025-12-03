@@ -1,22 +1,30 @@
 name: Update Proxy List
 
 on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "*.md"
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: "0 */6 * * *"
   workflow_dispatch:
 
 jobs:
   update-proxies:
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false   # important for pushing to external repo
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
@@ -26,11 +34,38 @@ jobs:
       - name: Run proxy scraper
         run: python run.py
 
-      - name: Commit and push results
+      # -------------------------------
+      # Commit and push to SAME repo
+      # -------------------------------
+      - name: Commit and push results to current repo
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add working_proxies.csv working_proxies.txt
           git reset -- proxies.db-journal || true
           git commit -m "Update working proxies - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || true
-          git push --force
+          git push
+
+      # -------------------------------
+      # Push CSV + TXT to OTHER repo
+      # -------------------------------
+      - name: Checkout external repo
+        uses: actions/checkout@v4
+        with:
+          repository: Pxys-io/DailyProxyList
+          token: ${{ secrets.GH_PUSH_TOKEN }}
+          path: external
+
+      - name: Copy files into external repo
+        run: |
+          cp working_proxies.csv external/
+          cp working_proxies.txt external/
+
+      - name: Commit & push to external repo
+        run: |
+          cd external
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add working_proxies.csv working_proxies.txt
+          git commit -m "DailyProxyList sync - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || true
+          git push

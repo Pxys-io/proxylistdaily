@@ -572,7 +572,6 @@ if __name__ == '__main__':
         for t in checker_threads:
             t.start()
 
-        global last_save_time
         while checked_counter < total_to_check:
             with counter_lock:
                 print(

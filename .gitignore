@@ -1,0 +1,7 @@
+proxies.db-journal
+proxy_manager.log
+__pycache__/
+*.pyc
+.replit
+replit.nix
+poetry.lock

@@ -6,6 +6,7 @@ import sqlite3
 import sys
 import logging
 import csv
+import json
 import re  # Added for advanced parsing
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -273,6 +274,28 @@ def scrape_geonode_api():
         logging.error(f"Failed to parse JSON from GeonodeAPI: {e}")
 
 
+def scrape_json_list(url, source_name):
+    """Scrapes proxies from a JSON list file."""
+    response = resilient_get(url)
+    if not response: return
+    try:
+        data = response.json()
+        count = 0
+        for p in data:
+            proxy_address = f"{p['ip']}:{p['port']}"
+            protocol = p.get('protocol', 'http') # Default to http if not specified
+            priority = PRIORITY_SOCKS if 'socks' in protocol else PRIORITY_HTTP
+            put_proxy_in_queue(priority, {
+                'protocol': protocol,
+                'proxy': proxy_address,
+                'source': source_name
+            })
+            count += 1
+        logging.info(f"{source_name}: Found {count} proxy entries.")
+    except Exception as e:
+        logging.error(f"Failed to parse JSON from {source_name}: {e}")
+
+
 def scrape_spys_one():
     """Scrapes spys.one, dealing with JavaScript-obfuscated ports."""
     url = "http://spys.one/en/free-proxy-list/"
@@ -462,12 +485,62 @@ if __name__ == '__main__':
         },
 
         # --- New Sources ---
+
+        # Proxifly GitHub Aggregator (High Volume Raw Text Files)
+        {
+            'target':
+            scrape_github_raw_text,
+            'args':
+            ('https://cdn.jsdelivr.net/gh/proxifly/free-proxy-list@main/proxies/protocols/http/data.txt',
+             'http', 'Proxifly-GitHub'),
+            'name':
+            'Scraper-Proxifly-HTTP'
+        },
+        {
+            'target':
+            scrape_github_raw_text,
+            'args':
+            ('https://cdn.jsdelivr.net/gh/proxifly/free-proxy-list@main/proxies/protocols/socks4/data.txt',
+             'socks4', 'Proxifly-GitHub'),
+            'name':
+            'Scraper-Proxifly-SOCKS4'
+        },
+        {
+            'target':
+            scrape_github_raw_text,
+            'args':
+            ('https://cdn.jsdelivr.net/gh/proxifly/free-proxy-list@main/proxies/protocols/socks5/data.txt',
+             'socks5', 'Proxifly-GitHub'),
+            'name':
+            'Scraper-Proxifly-SOCKS5'
+        },
+
+        # HTML Table Scrapers
+        {
+            'target': scrape_html_table,
+            'args': ('http://free-proxy.cz/en/', PRIORITY_HTTP),
+            'name': 'Scraper-FreeProxyCZ'
+        },
+        {
+            'target': scrape_html_table,
+            'args': ('https://proxydb.net/', PRIORITY_HTTP),
+            'name': 'Scraper-ProxyDB'
+        },
+
+        # JSON Aggregator
+        {
+            'target': scrape_json_list,
+            'args': ('https://raw.githubusercontent.com/monosans/proxy-list/main/proxies.json',
+                     'monosans-GitHub'),
+            'name': 'Scraper-monosans-JSON'
+        },
+
         # GitHub Aggregators (High Volume)
         {
             'target':
             scrape_github_raw_text,
             'args':
-            ('https://raw.githubusercontent.com/TheSpeedX/PROXY-LIST/master/http.txt',
+            ('https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/http.txt',
              'http', 'TheSpeedX-GitHub'),
             'name':
             'Scraper-TheSpeedX-HTTP'
@@ -476,7 +549,7 @@ if __name__ == '__main__':
             'target':
             scrape_github_raw_text,
             'args':
-            ('https://raw.githubusercontent.com/TheSpeedX/PROXY-LIST/master/socks4.txt',
+            ('https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/socks4.txt',
              'socks4', 'TheSpeedX-GitHub'),
             'name':
             'Scraper-TheSpeedX-SOCKS4'
@@ -485,7 +558,7 @@ if __name__ == '__main__':
             'target':
             scrape_github_raw_text,
             'args':
-            ('https://raw.githubusercontent.com/TheSpeedX/PROXY-LIST/master/socks5.txt',
+            ('https://raw.githubusercontent.com/TheSpeedX/SOCKS-List/master/socks5.txt',
              'socks5', 'TheSpeedX-GitHub'),
             'name':
             'Scraper-TheSpeedX-SOCKS5'

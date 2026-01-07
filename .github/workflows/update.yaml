@@ -44,6 +44,7 @@ jobs:
           repository: Pxys-io/DailyProxyList
           token: ${{ secrets.GH_PUSH_TOKEN }}
           path: external-test
+          persist-credentials: true
       
       - name: Test commit access to external repo
         run: |
@@ -104,6 +105,7 @@ jobs:
           repository: Pxys-io/DailyProxyList
           token: ${{ secrets.GH_PUSH_TOKEN }}
           path: external
+          persist-credentials: true
       
       - name: Copy files into external repo
         run: |

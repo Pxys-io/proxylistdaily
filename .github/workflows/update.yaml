@@ -29,9 +29,8 @@ jobs:
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git commit --allow-empty -m "Test commit access - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          git commit --allow-empty -m "Test commit access"
           git push
-          # Revert the test commit
           git reset --hard HEAD~1
           git push --force
       
@@ -42,20 +41,19 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Pxys-io/DailyProxyList
+          ref: master
           token: ${{ secrets.GH_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
           path: external-test
       
       - name: Test commit access to external repo
         run: |
           cd external-test
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git commit --allow-empty -m "Test commit access - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git commit --allow-empty -m "Test commit access"
           git push
-          # Revert the test commit
           git reset --hard HEAD~1
           git push --force
-          cd ..
       
       - name: Clean up external test repo
         run: rm -rf external-test
@@ -102,6 +100,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Pxys-io/DailyProxyList
+          ref: master
           token: ${{ secrets.GH_PUSH_TOKEN || secrets.GITHUB_TOKEN }}
           path: external
       

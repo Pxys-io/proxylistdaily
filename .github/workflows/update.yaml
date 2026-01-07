@@ -19,21 +19,70 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          persist-credentials: false
-
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+      
+      # -------------------------------
+      # Pre-flight check for CURRENT repo
+      # -------------------------------
+      - name: Test commit access to current repo
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit --allow-empty -m "Test commit access - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          git push
+          # Revert the test commit
+          git reset --hard HEAD~1
+          git push --force
+      
+      # -------------------------------
+      # Pre-flight check for EXTERNAL repo
+      # -------------------------------
+      - name: Checkout external repo for pre-flight test
+        uses: actions/checkout@v4
+        with:
+          repository: Pxys-io/DailyProxyList
+          token: ${{ secrets.GH_PUSH_TOKEN }}
+          path: external-test
+      
+      - name: Test commit access to external repo
+        run: |
+          cd external-test
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit --allow-empty -m "Test commit access - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          git push
+          # Revert the test commit
+          git reset --hard HEAD~1
+          git push --force
+          cd ..
+      
+      - name: Clean up external test repo
+        run: rm -rf external-test
+      
+      # Re-checkout main repo to ensure clean state
+      - name: Re-checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true
+      
+      # -------------------------------
+      # Now proceed with actual work
+      # -------------------------------
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
+      
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests beautifulsoup4 lxml pysocks
-
+      
       - name: Run proxy scraper
         run: python run.py
-
+      
       # -------------------------------
       # Commit and push to SAME repo
       # -------------------------------
@@ -43,9 +92,9 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add working_proxies.csv working_proxies.txt
           git reset -- proxies.db-journal || true
-          git commit -m "Update working proxies - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || true
+          git diff --quiet && git diff --staged --quiet || git commit -m "Update working proxies - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
           git push
-
+      
       # -------------------------------
       # Push CSV + TXT to OTHER repo
       # -------------------------------
@@ -55,17 +104,17 @@ jobs:
           repository: Pxys-io/DailyProxyList
           token: ${{ secrets.GH_PUSH_TOKEN }}
           path: external
-
+      
       - name: Copy files into external repo
         run: |
           cp working_proxies.csv external/
           cp working_proxies.txt external/
-
+      
       - name: Commit & push to external repo
         run: |
           cd external
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add working_proxies.csv working_proxies.txt
-          git commit -m "DailyProxyList sync - $(date -u +'%Y-%m-%d %H:%M:%S UTC')" || true
+          git diff --quiet && git diff --staged --quiet || git commit -m "DailyProxyList sync - $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
           git push

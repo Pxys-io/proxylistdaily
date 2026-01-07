@@ -16,17 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # -------------------------------
-      # Verify secrets are available
-      # -------------------------------
-      - name: Verify GH_PUSH_TOKEN is set
-        run: |
-          if [ -z "${{ secrets.GH_PUSH_TOKEN }}" ]; then
-            echo "Error: GH_PUSH_TOKEN secret is not set"
-            exit 1
-          fi
-          echo "GH_PUSH_TOKEN is available"
-      
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -55,10 +44,9 @@ jobs:
           repository: Pxys-io/DailyProxyList
           token: ${{ secrets.GH_PUSH_TOKEN }}
           path: external-test
+          persist-credentials: true
       
       - name: Test commit access to external repo
-        env:
-          GH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
         run: |
           cd external-test
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
@@ -117,6 +105,7 @@ jobs:
           repository: Pxys-io/DailyProxyList
           token: ${{ secrets.GH_PUSH_TOKEN }}
           path: external
+          persist-credentials: true
       
       - name: Copy files into external repo
         run: |
@@ -124,8 +113,6 @@ jobs:
           cp working_proxies.txt external/
       
       - name: Commit & push to external repo
-        env:
-          GH_TOKEN: ${{ secrets.GH_PUSH_TOKEN }}
         run: |
           cd external
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
